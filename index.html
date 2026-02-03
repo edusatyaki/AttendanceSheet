@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorized Access - Student Portal</title>
+    <style>
+        :root[data-theme="light"] {
+            --primary: #2563eb; --bg: #f1f5f9; --card-bg: #ffffff;
+            --text-main: #1e293b; --text-sub: #475569; --border: #cbd5e1;
+            --input-bg: #ffffff;
+        }
+        :root[data-theme="dark"] {
+            --primary: #60a5fa; --bg: #0f172a; --card-bg: #1e293b;
+            --text-main: #f1f5f9; --text-sub: #94a3b8; --border: #334155;
+            --input-bg: #0f172a;
+        }
+
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; transition: background 0.3s; }
+
+        /* Lock Screen Overlay */
+        #lock-screen {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; transition: all 0.4s ease-in-out;
+        }
+        .lock-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 380px; }
+
+        /* Main Form Container */
+        #main-content { display: none; width: 100%; max-width: 500px; padding: 20px; box-sizing: border-box; }
+        .form-card { background: var(--card-bg); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); color: var(--text-main); }
+
+        h2, h3 { margin-top: 0; color: var(--text-main); }
+        .form-group { margin-bottom: 1rem; text-align: left; }
+        label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: var(--text-sub); }
+        
+        input, select, textarea { 
+            width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: 8px; 
+            font-size: 1rem; background: var(--input-bg); color: var(--text-main); box-sizing: border-box;
+        }
+        
+        button { 
+            width: 100%; background: var(--primary); color: white; border: none; 
+            padding: 14px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: opacity 0.2s;
+        }
+        button:active { opacity: 0.8; }
+        #other-reason-container { display: none; margin-top: 10px; }
+
+        .theme-btn { 
+            background: none; border: 1px solid var(--border); color: var(--text-main); 
+            padding: 6px 12px; width: auto; font-size: 0.75rem; border-radius: 20px; margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="lock-screen">
+    <div class="lock-card">
+        <h3>Security Verification</h3>
+        <p style="color: var(--text-sub); margin-bottom: 20px;">Please enter the Secret Key to access the form.</p>
+        <input type="password" id="keyInput" placeholder="••••••••" style="text-align: center; margin-bottom: 20px;">
+        <button onclick="verifyKey()" id="unlockBtn">Unlock Form</button>
+    </div>
+</div>
+
+<div id="main-content">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="theme-btn" onclick="toggleTheme()" id="themeLabel">🌙 Dark Mode</button>
+    </div>
+
+    <div class="form-card">
+        <h2>Student Issue Form</h2>
+        <form id="issueForm">
+            <div class="form-group"><label>Student Name</label><input type="text" name="studentName" required></div>
+            <div class="form-group"><label>Enrolment No</label><input type="text" name="enrolmentNo" required></div>
+            <div class="form-group">
+                <label>Batch</label>
+                <select name="batch" required>
+                    <option value="">Select Batch</option>
+                    <option>2023-2027</option><option>2024-2028</option>
+                    <option>2025-2029</option><option>2026-2030</option>
+                    <option>2027-2031</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Section</label><input type="text" name="section" required></div>
+            <div class="form-group"><label>Date of Issue</label><input type="date" name="dateOfIssue" required></div>
+            <div class="form-group">
+                <label>Reason</label>
+                <select name="reason" id="reasonSelect" onchange="checkReason()" required>
+                    <option value="">Select Reason</option>
+                    <option value="Medical issues">1. Medical issues</option>
+                    <option value="Attendance system issues">2. Attendance system issues</option>
+                    <option value="Came after 10mins">3. Came after 10mins</option>
+                    <option value="Others">4. Others</option>
+                </select>
+            </div>
+            <div class="form-group" id="other-reason-container">
+                <label>Specify Reason</label>
+                <textarea name="otherReason" id="otherText" rows="2"></textarea>
+            </div>
+            <div class="form-group"><label>Faculty Name</label><input type="text" name="facultyName" required></div>
+            
+            <button type="submit" id="submitBtn">Submit Data</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const scriptURL = 'https://script.google.com/macros/s/AKfycby1IpBCZlXif1XuwiKdHGU9xSKKHFgpawy4DJ5KGXunY6YN4diSfspvzTL1l2YP7aav/exec';
+    let cachedSecretKey = "";
+
+    // 1. Fetch Key on Load
+    window.onload = async () => {
+        try {
+            const response = await fetch(scriptURL);
+            cachedSecretKey = (await response.text()).trim();
+        } catch (e) {
+            console.error("System connection error.");
+        }
+    };
+
+    // 2. Verify Key Logic
+    function verifyKey() {
+        const input = document.getElementById('keyInput').value;
+        if (input === cachedSecretKey && cachedSecretKey !== "") {
+            const ls = document.getElementById('lock-screen');
+            ls.style.opacity = '0';
+            ls.style.pointerEvents = 'none';
+            setTimeout(() => {
+                ls.style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            }, 400);
+        } else {
+            alert("Invalid Secret Key. Please try again.");
+            document.getElementById('keyInput').value = "";
+        }
+    }
+
+    // 3. Form Logic
+    function checkReason() {
+        const container = document.getElementById('other-reason-container');
+        const textField = document.getElementById('otherText');
+        if (document.getElementById('reasonSelect').value === 'Others') {
+            container.style.display = 'block';
+            textField.required = true;
+        } else {
+            container.style.display = 'none';
+            textField.required = false;
+        }
+    }
+
+    document.getElementById('issueForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerText = 'Uploading to Sheet...';
+
+        fetch(scriptURL, { method: 'POST', body: new FormData(e.target)})
+            .then(res => {
+                alert("✅ Success! Form data saved.");
+                e.target.reset();
+                checkReason();
+                btn.disabled = false;
+                btn.innerText = 'Submit Data';
+            })
+            .catch(err => {
+                alert("Submission failed. Check connection.");
+                btn.disabled = false;
+            });
+    });
+
+    // 4. Theme Toggle
+    function toggleTheme() {
+        const html = document.documentElement;
+        const btn = document.getElementById('themeLabel');
+        if (html.getAttribute('data-theme') === 'light') {
+            html.setAttribute('data-theme', 'dark');
+            btn.innerText = '☀️ Light Mode';
+        } else {
+            html.setAttribute('data-theme', 'light');
+            btn.innerText = '🌙 Dark Mode';
+        }
+    }
+</script>
+
+</body>
+</html>
